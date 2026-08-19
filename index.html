@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>倍數邊界問題探究學習機 (嚴格不含端點版)</title>
+  <style>
+    :root {
+      --board-bg: #1e3d2f;
+      --board-frame: #8b5a2b;
+      --chalk-white: #ffffff;
+      --chalk-yellow: #ffeb3b;
+      --chalk-blue: #80d8ff;
+      --chalk-pink: #ff80ab;
+      --chalk-green: #b9f6ca;
+      --chalk-orange: #ffb74d;
+      --btn-primary: #ff9800;
+      --btn-secondary: #00bcd4;
+      --bg-color: #eceff1;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      background-color: var(--bg-color);
+      color: #333;
+    }
+
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px 8px 0 0;
+      background-color: #cfd8dc;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background-color: var(--board-bg);
+      color: var(--chalk-yellow);
+      border-top: 4px solid var(--board-frame);
+    }
+
+    .blackboard {
+      background-color: var(--board-bg);
+      border: 12px solid var(--board-frame);
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+      padding: 24px;
+      color: var(--chalk-white);
+      min-height: 600px;
+    }
+
+    .chalk-title {
+      text-align: center;
+      font-size: 1.6rem;
+      color: var(--chalk-yellow);
+      margin-top: 0;
+      margin-bottom: 12px;
+      letter-spacing: 1px;
+    }
+
+    .rule-badge {
+      background: rgba(255, 82, 82, 0.25);
+      border: 2px solid var(--chalk-pink);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 1.05rem;
+      text-align: center;
+      margin-bottom: 16px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+
+    .card-panel {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px dashed rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .input-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+    }
+
+    input[type="number"], input[type="text"] {
+      width: 100px;
+      padding: 8px 10px;
+      font-size: 1.1rem;
+      text-align: center;
+      border-radius: 6px;
+      border: 2px solid #aaa;
+      background-color: #fff;
+      color: #000;
+      font-weight: bold;
+    }
+
+    .step-box {
+      margin-top: 16px;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.25);
+      border-left: 5px solid var(--chalk-blue);
+      border-radius: 6px;
+      display: none;
+    }
+
+    .step-box.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .step-title {
+      color: var(--chalk-blue);
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .action-btn {
+      padding: 8px 20px;
+      font-size: 1rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: var(--btn-primary);
+      color: #fff;
+      transition: background 0.2s;
+    }
+
+    .action-btn:hover {
+      background-color: #f57c00;
+    }
+
+    .next-btn {
+      background-color: var(--btn-secondary);
+    }
+    .next-btn:hover {
+      background-color: #0097a7;
+    }
+
+    .board-result {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+      line-height: 1.8;
+      font-size: 1.15rem;
+      display: none;
+    }
+
+    .highlight-pink { color: var(--chalk-pink); font-weight: bold; }
+    .highlight-blue { color: var(--chalk-blue); font-weight: bold; }
+    .highlight-yellow { color: var(--chalk-yellow); font-weight: bold; }
+    .highlight-green { color: var(--chalk-green); font-weight: bold; }
+    .highlight-orange { color: var(--chalk-orange); font-weight: bold; }
+
+    .hint-msg {
+      margin-top: 8px;
+      color: var(--chalk-pink);
+      font-size: 0.95rem;
+    }
+
+    .quiz-card {
+      font-size: 1.2rem;
+      line-height: 1.8;
+      margin-bottom: 16px;
+    }
+    .quiz-stat {
+      display: flex;
+      justify-content: space-between;
+      color: var(--chalk-yellow);
+      font-size: 1rem;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      padding-bottom: 8px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="nav-tabs">
+    <button class="tab-btn active" id="tabPracticeBtn" onclick="switchMode('practice')">自主引導探究模式</button>
+    <button class="tab-btn" id="tabBossBtn" onclick="switchMode('boss')">大魔王應用題挑戰 (20題隨機)</button>
+  </div>
+
+  <div class="blackboard">
+    <!-- 模式一：自主引導練習 -->
+    <div id="practiceView">
+      <h2 class="chalk-title">📐 倍數邊界定位解題法</h2>
+      <div class="rule-badge">📢 特別提醒：解題範圍一律「不包含」設定的左右端點數字！</div>
+      
+      <div class="card-panel">
+        <div class="input-row">
+          <span>題目範圍：在</span>
+          <input type="number" id="lowerBound" placeholder="下限" value="80">
+          <span>～</span>
+          <input type="number" id="upperBound" placeholder="上限" value="300">
+          <span>之間（不含左右兩數）</span>
+        </div>
+        <div class="input-row">
+          <span>尋找哪一個數的倍數：</span>
+          <input type="number" id="targetDivisor" placeholder="除數" value="16">
+          <button class="action-btn" onclick="startGuidedPractice()">開始引導解題</button>
+        </div>
+      </div>
+
+      <!-- 步驟 1 -->
+      <div id="step1Box" class="step-box">
+        <div class="step-title">步驟 1：求左邊界 (求出最小有效倍數)</div>
+        <div class="input-row">
+          <input type="number" id="s1_num1" placeholder="?">
+          <span>÷</span>
+          <input type="number" id="s1_num2" placeholder="?">
+          <span>=</span>
+          <span id="s1_res" class="highlight-yellow">？…？</span>
+          <button class="action-btn" onclick="verifyStep1()">驗證計算</button>
+        </div>
+        <div id="s1_hint" class="hint-msg"></div>
+        <div id="s1_conclusion" style="margin-top:8px;"></div>
+      </div>
+
+      <!-- 步驟 2 -->
+      <div id="step2Box" class="step-box">
+        <div class="step-title">步驟 2：求右邊界 (求出最大有效倍數)</div>
+        <div class="input-row">
+          <input type="number" id="s2_num1" placeholder="?">
+          <span>÷</span>
+          <input type="number" id="s2_num2" placeholder="?">
+          <span>=</span>
+          <span id="s2_res" class="highlight-yellow">？…？</span>
+          <button class="action-btn" onclick="verifyStep2()">驗證計算</button>
+        </div>
+        <div id="s2_hint" class="hint-msg"></div>
+        <div id="s2_conclusion" style="margin-top:8px;"></div>
+      </div>
+
+      <!-- 步驟 3 -->
+      <div id="step3Box" class="step-box">
+        <div class="step-title">步驟 3：區間展開與答案統計</div>
+        <p>經由邊界判定（不含兩端點），符合條件的倍數從 <span id="s3_minMultiple" class="highlight-green"></span> 倍 到 <span id="s3_maxMultiple" class="highlight-green"></span> 倍。</p>
+        <div class="input-row">
+          <span>請填入符合條件的個數共：</span>
+          <input type="number" id="s3_countInput" style="width: 80px;" placeholder="幾">
+          <span>個</span>
+          <button class="action-btn next-btn" onclick="verifyStep3()">產出完整黑板板書</button>
+        </div>
+        <div id="s3_hint" class="hint-msg"></div>
+      </div>
+
+      <!-- 最終黑板解題板書 -->
+      <div id="boardFinalResult" class="board-result"></div>
+    </div>
+
+    <!-- 模式二：大魔王挑戰 -->
+    <div id="bossView" style="display:none;">
+      <div class="quiz-stat">
+        <span>挑戰進度：第 <span id="quizIndex">1</span> 題 / 共 20 題</span>
+        <span>當前累計得分：<span id="quizScore" class="highlight-yellow">0</span> 分</span>
+      </div>
+      <h2 class="chalk-title">⚔️ 大魔王倍數應用挑戰題 (不含端點)</h2>
+      <div class="rule-badge">📢 挑戰規則：題意中提及「在…之間」或「…幾」皆不含端點數，請審慎計算！</div>
+
+      <div class="card-panel quiz-card">
+        <div id="quizQuestionText" class="highlight-white">題目載入中...</div>
+      </div>
+
+      <div class="card-panel">
+        <div class="input-row">
+          <span>請輸入你的解答（多個答案請用頓號、逗號或空格隔開）：</span>
+        </div>
+        <div class="input-row">
+          <input type="text" id="quizUserAnswer" style="width: 280px;" placeholder="輸入數值或個數">
+          <button class="action-btn" onclick="checkQuizAnswer()">提交解答</button>
+          <button class="action-btn next-btn" id="nextQuizBtn" style="display:none;" onclick="loadNextQuiz()">下一題</button>
+        </div>
+        <div id="quizFeedback" class="hint-msg"></div>
+      </div>
+
+      <div id="quizExplanation" class="board-result"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 全域變數
+  let currentConfig = { lower: 80, upper: 300, divisor: 16 };
+  let s1Data = { startMultiplier: 0, quotient: 0, remainder: 0 };
+  let s2Data = { endMultiplier: 0, quotient: 0, remainder: 0 };
+
+  function switchMode(mode) {
+    const pBtn = document.getElementById('tabPracticeBtn');
+    const bBtn = document.getElementById('tabBossBtn');
+    const pView = document.getElementById('practiceView');
+    const bView = document.getElementById('bossView');
+
+    if (mode === 'practice') {
+      pBtn.classList.add('active');
+      bBtn.classList.remove('active');
+      pView.style.display = 'block';
+      bView.style.display = 'none';
+    } else {
+      bBtn.classList.add('active');
+      pBtn.classList.remove('active');
+      pView.style.display = 'none';
+      bView.style.display = 'block';
+      initQuiz();
+    }
+  }
+
+  function startGuidedPractice() {
+    const lower = parseInt(document.getElementById('lowerBound').value);
+    const upper = parseInt(document.getElementById('upperBound').value);
+    const divisor = parseInt(document.getElementById('targetDivisor').value);
+
+    if (isNaN(lower) || isNaN(upper) || isNaN(divisor) || lower <= 0 || upper <= lower || divisor <= 0) {
+      alert("請輸入合理的正整數範圍（上限大於下限）與除數！");
+      return;
+    }
+
+    currentConfig = { lower, upper, divisor };
+
+    document.getElementById('step1Box').classList.add('active');
+    document.getElementById('step2Box').classList.remove('active');
+    document.getElementById('step3Box').classList.remove('active');
+    document.getElementById('boardFinalResult').style.display = 'none';
+
+    document.getElementById('s1_num1').value = '';
+    document.getElementById('s1_num2').value = '';
+    document.getElementById('s1_res').innerText = '？…？';
+    document.getElementById('s1_hint').innerText = '';
+    document.getElementById('s1_conclusion').innerText = '';
+
+    document.getElementById('s2_num1').value = '';
+    document.getElementById('s2_num2').value = '';
+    document.getElementById('s2_res').innerText = '？…？';
+    document.getElementById('s2_hint').innerText = '';
+    document.getElementById('s2_conclusion').innerText = '';
+
+    document.getElementById('s3_countInput').value = '';
+    document.getElementById('s3_hint').innerText = '';
+  }
+
+  function verifyStep1() {
+    const n1 = parseInt(document.getElementById('s1_num1').value);
+    const n2 = parseInt(document.getElementById('s1_num2').value);
+    const hint = document.getElementById('s1_hint');
+    const conclusion = document.getElementById('s1_conclusion');
+
+    if (n1 !== currentConfig.lower || n2 !== currentConfig.divisor) {
+      hint.innerText = `💡 提示：左邊界請輸入「下限」除以「目標倍數」，也就是 ${currentConfig.lower} ÷ ${currentConfig.divisor}`;
+      return;
+    }
+
+    hint.innerText = '';
+    const q = Math.floor(n1 / n2);
+    const r = n1 % n2;
+    s1Data.quotient = q;
+    s1Data.remainder = r;
+    document.getElementById('s1_res').innerText = `${q} … ${r}`;
+
+    // 嚴格不含端點演算法：
+    // 整除時：q倍剛好等於端點，因為不含端點，所以必須 +1 倍從 (q+1) 開始
+    // 有餘數時：q倍小於端點，所以也必須 +1 倍從 (q+1) 開始
+    s1Data.startMultiplier = q + 1;
+
+    if (r === 0) {
+      conclusion.innerHTML = `<span class="highlight-orange">📌 整除！但因為【不包含端點 ${n1}】，所以 ${currentConfig.divisor}×${q}=${n1} 不能取，左邊界最少需從第 <b>${q}+1 = ${q+1}</b> 倍開始！</span>`;
+    } else {
+      conclusion.innerHTML = `<span class="highlight-blue">📌 有餘數！因為 ${currentConfig.divisor}×${q}=${currentConfig.divisor*q} < ${n1}，左邊界最少需乘 <b>${q}+1 = ${q+1}</b> 倍。</span>`;
+    }
+
+    document.getElementById('step2Box').classList.add('active');
+  }
+
+  function verifyStep2() {
+    const n1 = parseInt(document.getElementById('s2_num1').value);
+    const n2 = parseInt(document.getElementById('s2_num2').value);
+    const hint = document.getElementById('s2_hint');
+    const conclusion = document.getElementById('s2_conclusion');
+
+    if (n1 !== currentConfig.upper || n2 !== currentConfig.divisor) {
+      hint.innerText = `💡 提示：右邊界請輸入「上限」除以「目標倍數」，也就是 ${currentConfig.upper} ÷ ${currentConfig.divisor}`;
+      return;
+    }
+
+    hint.innerText = '';
+    const q = Math.floor(n1 / n2);
+    const r = n1 % n2;
+    s2Data.quotient = q;
+    s2Data.remainder = r;
+    document.getElementById('s2_res').innerText = `${q} … ${r}`;
+
+    // 嚴格不含端點演算法：
+    // 整除時：q倍剛好等於端點，因為不含端點，所以必須 -1 倍，最多取到 (q-1) 倍
+    // 有餘數時：q倍小於端點，直接取 q 倍
+    if (r === 0) {
+      s2Data.endMultiplier = q - 1;
+      conclusion.innerHTML = `<span class="highlight-orange">📌 整除！但因為【不包含端點 ${n1}】，所以 ${currentConfig.divisor}×${q}=${n1} 不能取，右邊界最多只能乘 <b>${q}-1 = ${q-1}</b> 倍！</span>`;
+    } else {
+      s2Data.endMultiplier = q;
+      conclusion.innerHTML = `<span class="highlight-blue">📌 有餘數！右邊界最多乘 <b>${q}</b> 倍（${currentConfig.divisor}×${q}=${currentConfig.divisor*q} < ${n1}）。</span>`;
+    }
+
+    document.getElementById('s3_minMultiple').innerText = s1Data.startMultiplier;
+    document.getElementById('s3_maxMultiple').innerText = s2Data.endMultiplier;
+    document.getElementById('step3Box').classList.add('active');
+  }
+
+  function verifyStep3() {
+    const countInput = parseInt(document.getElementById('s3_countInput').value);
+    const hint = document.getElementById('s3_hint');
+    const actualCount = Math.max(0, s2Data.endMultiplier - s1Data.startMultiplier + 1);
+
+    if (countInput !== actualCount) {
+      hint.innerText = `💡 計算提示：個數公式為 (最大倍數 - 最小倍數 + 1)，即 ${s2Data.endMultiplier} - ${s1Data.startMultiplier} + 1 = ${actualCount} 個。`;
+      return;
+    }
+
+    hint.innerText = '';
+    renderFullBoardSolution();
+  }
+
+  function renderFullBoardSolution() {
+    const board = document.getElementById('boardFinalResult');
+    const { lower, upper, divisor } = currentConfig;
+    const { startMultiplier, quotient: q1, remainder: r1 } = s1Data;
+    const { endMultiplier, quotient: q2, remainder: r2 } = s2Data;
+
+    let multiplesList = [];
+    let valuesOnly = [];
+    if (startMultiplier <= endMultiplier) {
+      for (let m = startMultiplier; m <= endMultiplier; m++) {
+        const val = divisor * m;
+        multiplesList.push(`${divisor} × ${m} = ${val}`);
+        valuesOnly.push(val);
+      }
+    }
+
+    const count = Math.max(0, endMultiplier - startMultiplier + 1);
+
+    let html = `
+      <div style="color: var(--chalk-yellow); font-weight:bold; font-size:1.3rem; margin-bottom:8px;">📋 黑板標準解題歷程板書</div>
+      <div>題目：在 ${lower} ～ ${upper} 之間（不包含 ${lower} 和 ${upper}），哪些數是 ${divisor} 的倍數？</div>
+      <br>
+      <div class="highlight-pink">${lower} ÷ ${divisor} = ${q1} … ${r1} <span class="highlight-blue">👉 左邊界（不含${lower}），最少乘 ${startMultiplier} 倍</span></div>
+      <div class="highlight-pink">${upper} ÷ ${divisor} = ${q2} … ${r2} <span class="highlight-blue">👉 右邊界（不含${upper}），最多乘 ${endMultiplier} 倍</span></div>
+      <br>
+      <div style="border-left: 2px solid var(--chalk-yellow); padding-left: 12px;">
+        ${multiplesList.length > 0 ? multiplesList.map(item => `<div>${item}</div>`).join('') : '<div class="highlight-pink">區間內無符合條件的倍數</div>'}
+      </div>
+      <br>
+      <div class="highlight-green">💡 共有 ${endMultiplier} - ${startMultiplier} + 1 = <b>${count}</b> 個解</div>
+      <div class="highlight-yellow" style="margin-top:8px;">答：${valuesOnly.length > 0 ? valuesOnly.join('、') : '無解'}</div>
+    `;
+
+    board.innerHTML = html;
+    board.style.display = 'block';
+  }
+
+  // --- 20 題大魔王題庫（嚴格開區間不含端點） ---
+  const bossBank = [
+    {
+      q: "在 80～300 之間（不包含 80 與 300），共有幾個數是 16 的倍數？",
+      ans: ["13"],
+      note: "80÷16=5…0 (整除，不含80取6倍起)；300÷16=18…12 (取18倍止)。個數：18-6+1=13 個 (從96算到288)。"
+    },
+    {
+      q: "汽水糖的數量在 200～250 顆之間（不含 200 與 250），把汽水糖每 15 顆分成一堆可以剛好分完，汽水糖可能有幾顆？",
+      ans: ["210", "225", "240"],
+      note: "200÷15=13…5 (取14倍起=210)；250÷15=16…10 (取16倍止=240)。答案為 210、225、240。"
+    },
+    {
+      q: "一箱果凍有一百六十幾個（代表數量在 160～170 之間，不含 160 與 170），每 12 個分成一盒剛好分完，這箱果凍有幾個？",
+      ans: ["168"],
+      note: "範圍為 161~169。160÷12=13…4 (取14倍)，12×14=168。"
+    },
+    {
+      q: "有一堆薄餅，每 19 片裝一盒剛好裝完。如果這堆薄餅的數量接近 400 片且比 400 片少，這堆薄餅最多有幾片？",
+      ans: ["399"],
+      note: "400÷19=21…1，比400少取最大整數倍 19×21 = 399 片。"
+    },
+    {
+      q: "在 100～120 之間（不包含 100 與 120），哪些數是 9 的倍數？",
+      ans: ["108", "117"],
+      note: "100÷9=11…1 (取12倍=108)；120÷9=13…3 (取13倍=117)。"
+    },
+    {
+      q: "五年級參加戶外教學的人數在 140～180 人之間（不含 140 與 180），每 16 人分成一組剛好分完，人數可能是多少？",
+      ans: ["144", "160", "176"],
+      note: "140÷16=8…12 (取9倍=144)；180÷16=11…4 (取11倍=176)。"
+    },
+    {
+      q: "在 60～120 之間（不包含 60 與 120），共有幾個數是 15 的倍數？",
+      ans: ["3"],
+      note: "60÷15=4…0 (整除，不含60取5倍起=75)；120÷15=8…0 (整除，不含120取7倍止=105)。共 7-5+1=3 個 (75, 90, 105)。"
+    },
+    {
+      q: "運動會進場人數在 300～350 人之間（不含 300 與 350），每 24 人排成一列剛好排完，進場人數可能是多少人？",
+      ans: ["312", "336"],
+      note: "300÷24=12…12 (取13倍=312)；350÷24=14…14 (取14倍=336)。"
+    },
+    {
+      q: "在 500～600 之間（不含 500 與 600），是 35 的倍數共有幾個？",
+      ans: ["3"],
+      note: "500÷35=14…10 (取15倍起=525)；600÷35=17…5 (取17倍止=595)。共 17-15+1=3 個。"
+    },
+    {
+      q: "文具工廠生產了一批鉛筆在 450～500 枝之間（不含 450 與 500），每 28 枝裝成一打剛好裝完，這批鉛筆最多有幾枝？",
+      ans: ["476"],
+      note: "500÷28=17…24，最大倍數取 28×17 = 476。"
+    },
+    {
+      q: "麵包師傅烤了接近 300 個且比 300 個多的可頌，每 14 個裝一盤剛好裝完，師傅最少烤了幾個？",
+      ans: ["308"],
+      note: "300÷14=21…6，比300多需取第 22 倍：14×22 = 308。"
+    },
+    {
+      q: "在 1～200 之間（不包含 1 與 200），是 17 的倍數中最大的數是多少？",
+      ans: ["187"],
+      note: "200÷17=11…13，17×11 = 187。"
+    },
+    {
+      q: "學校圖書館新進書籍在 150～220 本之間（不含 150 與 220），每 13 本捆成一捆剛好捆完，最多可以捆成幾捆？",
+      ans: ["16"],
+      note: "220÷13=16…12，最多取 16 捆 (共208本)。"
+    },
+    {
+      q: "在 80～150 之間（不含 80 與 150），哪些數是 11 的倍數？",
+      ans: ["88", "99", "110", "121", "132", "143"],
+      note: "80÷11=7…3 (取8倍起=88)；150÷11=13…7 (取至13倍=143)。"
+    },
+    {
+      q: "一盒彩色筆有七十幾枝（大於 70 且小於 80），每 8 枝裝一盒剛好分完，彩色筆有幾枝？",
+      ans: ["72"],
+      note: "70~80 之間，8×9=72 符合條件。"
+    },
+    {
+      q: "在 200～400 之間（不包含 200 與 400），共有幾個數是 32 的倍數？",
+      ans: ["6"],
+      note: "200÷32=6…8 (取7倍起)；400÷32=12…16 (取12倍止)。個數：12-7+1=6個。"
+    },
+    {
+      q: "跳繩隊隊員人數在 60～100 人之間（不含 60 與 100），每 7 人一組剛好分完，隊員最少有幾人？",
+      ans: ["63"],
+      note: "60÷7=8…4，最少需取 9 倍：7×9 = 63。"
+    },
+    {
+      q: "在接近 1000 且比 1000 少的數中，23 的最大倍數是多少？",
+      ans: ["989"],
+      note: "1000÷23=43…11，23×43 = 989。"
+    },
+    {
+      q: "在 120～260 之間（不包含 120 與 260），是 21 的倍數中，最大與最小的數相差多少？",
+      ans: ["126"],
+      note: "最小：120÷21=5…15 (取6倍=126)；最大：260÷21=12…8 (取12倍=252)。相差 252-126 = 126。"
+    },
+    {
+      q: "一箱橘子有九十幾顆（大於 90 且小於 100），每 16 顆裝一袋剛好分完，這箱橘子有幾顆？",
+      ans: ["96"],
+      note: "90÷16=5…10，16×6 = 96 落在 91~99 之間。"
+    }
+  ];
+
+  let quizList = [];
+  let currentQuizIdx = 0;
+  let quizScore = 0;
+
+  function initQuiz() {
+    quizList = [...bossBank].sort(() => Math.random() - 0.5);
+    currentQuizIdx = 0;
+    quizScore = 0;
+    document.getElementById('quizScore').innerText = quizScore;
+    loadQuizQuestion();
+  }
+
+  function loadQuizQuestion() {
+    const q = quizList[currentQuizIdx];
+    document.getElementById('quizIndex').innerText = currentQuizIdx + 1;
+    document.getElementById('quizQuestionText').innerText = q.q;
+    document.getElementById('quizUserAnswer').value = '';
+    document.getElementById('quizFeedback').innerText = '';
+    document.getElementById('quizExplanation').style.display = 'none';
+    document.getElementById('nextQuizBtn').style.display = 'none';
+  }
+
+  function checkQuizAnswer() {
+    const userRaw = document.getElementById('quizUserAnswer').value.trim();
+    if (!userRaw) {
+      alert("請填寫你的答案！");
+      return;
+    }
+
+    const q = quizList[currentQuizIdx];
+    const userNorm = userRaw.replace(/[,，、 ]+/g, ' ').trim().split(' ').sort().join(',');
+    const ansNorm = q.ans.sort().join(',');
+
+    const fb = document.getElementById('quizFeedback');
+    const exp = document.getElementById('quizExplanation');
+
+    if (userNorm === ansNorm || userRaw === q.ans[0]) {
+      fb.innerHTML = `<span class="highlight-green">🎉 太厲害了！完全正確！</span>`;
+      quizScore += 5;
+      document.getElementById('quizScore').innerText = quizScore;
+    } else {
+      fb.innerHTML = `<span class="highlight-pink">❌ 差一點點！標準答案是：<b>${q.ans.join('、')}</b></span>`;
+    }
+
+    exp.innerHTML = `
+      <div class="highlight-yellow">💡 邊界解題思考歷程（嚴格不含端點）：</div>
+      <div>${q.note}</div>
+    `;
+    exp.style.display = 'block';
+    document.getElementById('nextQuizBtn').style.display = 'inline-block';
+  }
+
+  function loadNextQuiz() {
+    currentQuizIdx++;
+    if (currentQuizIdx < quizList.length) {
+      loadQuizQuestion();
+    } else {
+      alert(`🏆 恭喜完成所有挑戰！最終總得分：${quizScore} 分！`);
+      initQuiz();
+    }
+  }
+</script>
+</body>
+</html>
