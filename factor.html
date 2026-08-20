@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>因數探險隊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Nunito', '微軟正黑體', sans-serif;
+            background-color: #f1f5f9;
+        }
+        
+        @keyframes bounce-slight {
+            0%, 100% { transform: translateY(-3%); }
+            50% { transform: translateY(0); }
+        }
+        .animate-bounce-slight {
+            animation: bounce-slight 2s infinite ease-in-out;
+        }
+        
+        @keyframes pop {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        .bg-pattern {
+            background-image: radial-gradient(#cbd5e1 2px, transparent 2px);
+            background-size: 30px 30px;
+        }
+        
+        /* 隱藏數字輸入框的上下箭頭 */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- 頂部控制列 -->
+        <div class="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border-2 border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
+            <h1 class="text-2xl sm:text-3xl font-black text-blue-700 flex items-center gap-2">
+                <span>🔎</span> 因數探險隊
+            </h1>
+            
+            <div class="flex flex-wrap items-center gap-3 justify-center">
+                <button onclick="handleRandomEasy()" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl shadow transition-transform active:scale-95 flex items-center gap-2">
+                    <span>🎲</span> 隨機(簡單)
+                </button>
+                <button onclick="handleRandomHard()" class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-xl shadow transition-transform active:scale-95 flex items-center gap-2">
+                    <span>👿</span> 魔王題挑戰
+                </button>
+                <div class="w-px h-8 bg-gray-300 hidden sm:block"></div>
+                <form id="custom-form" class="flex items-center gap-2" onsubmit="handleSetCustom(event)">
+                    <input 
+                        type="number" 
+                        id="custom-input"
+                        placeholder="自訂數字" 
+                        class="w-24 px-3 py-2 border-2 border-gray-300 rounded-xl focus:border-blue-500 outline-none text-center font-bold"
+                    />
+                    <button type="submit" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl shadow transition-transform active:scale-95">
+                        設定
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 遊戲主要版面 (雙欄佈局) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- 左側：遊戲操作區 -->
+            <div class="lg:col-span-2 space-y-6 relative">
+                
+                <!-- 歡迎畫面 (未選擇題目時顯示) -->
+                <div id="welcome-screen" class="bg-white p-12 rounded-3xl shadow-lg border-4 border-dashed border-blue-300 text-center flex flex-col items-center justify-center min-h-[400px]">
+                    <div class="text-7xl mb-6 animate-bounce-slight">🚀</div>
+                    <h2 class="text-3xl font-black text-gray-700 mb-4">歡迎來到因數探險隊！</h2>
+                    <p class="text-xl text-gray-500 font-bold">請在上方選擇題目，開始尋找隱藏的因數吧！</p>
+                </div>
+
+                <!-- 遊戲進行畫面 (隱藏，選擇題目後顯示) -->
+                <div id="game-screen" class="hidden bg-white p-6 sm:p-8 rounded-3xl shadow-lg border-4 border-blue-400 relative overflow-hidden bg-pattern">
+                    
+                    <!-- 慶祝動畫覆蓋層 -->
+                    <div id="celebration-screen" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm z-50 flex-col items-center justify-center">
+                        <div class="text-8xl mb-4">🎉</div>
+                        <h2 class="text-4xl font-black text-red-500 mb-2 text-center">太棒了！任務完成！</h2>
+                        <p class="text-2xl font-bold text-gray-700 mb-6 text-center">你成功找出了 <span id="celeb-target"></span> 的所有因數！</p>
+                        <button onclick="resetToWelcome()" class="px-8 py-4 bg-blue-500 text-white text-2xl font-black rounded-2xl shadow-lg hover:bg-blue-600 transition-transform active:scale-95">
+                            再玩一次
+                        </button>
+                    </div>
+
+                    <div class="text-center mb-8">
+                        <span class="inline-block bg-blue-100 text-blue-800 px-6 py-2 rounded-full text-xl font-bold mb-4 shadow-sm">
+                            目前目標
+                        </span>
+                        <div id="target-display" class="text-7xl font-black text-blue-600 drop-shadow-md">
+                            --
+                        </div>
+                    </div>
+
+                    <!-- 訊息提示區 -->
+                    <div id="message-box" class="hidden mb-6 p-4 rounded-2xl text-lg font-bold text-center border-2"></div>
+
+                    <!-- 輸入區塊 -->
+                    <form id="check-form" onsubmit="handleCheck(event)" class="flex flex-wrap items-center justify-center gap-4 mb-10 p-6 bg-white rounded-3xl shadow-sm border-2 border-gray-100">
+                        <input
+                            id="input-a"
+                            type="number"
+                            min="1"
+                            class="w-20 h-20 sm:w-24 sm:h-24 text-center text-3xl sm:text-4xl font-black rounded-2xl border-4 border-gray-300 focus:border-blue-500 outline-none text-gray-700"
+                        />
+                        <span class="text-4xl font-black text-gray-400">✖️</span>
+                        <input
+                            id="input-b"
+                            type="number"
+                            min="1"
+                            class="w-20 h-20 sm:w-24 sm:h-24 text-center text-3xl sm:text-4xl font-black rounded-2xl border-4 border-gray-300 focus:border-blue-500 outline-none text-gray-700"
+                        />
+                        <span class="text-4xl font-black text-gray-400">🟰</span>
+                        <span id="equation-target" class="text-4xl sm:text-5xl font-black text-blue-600 w-20 text-center">--</span>
+                        
+                        <div class="flex flex-col gap-2 ml-4">
+                            <button type="submit" class="px-6 py-3 bg-green-500 hover:bg-green-600 text-white text-xl font-bold rounded-xl shadow transition-transform active:scale-95 flex items-center justify-center gap-2">
+                                <span>✔️</span> 檢查
+                            </button>
+                            <button type="button" onclick="handleHint()" class="px-6 py-2 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold rounded-xl shadow transition-transform active:scale-95 flex items-center justify-center gap-2">
+                                <span>💡</span> 提示
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- 因數排列線 (視覺化教學核心) -->
+                    <div class="mb-10 bg-white p-6 rounded-3xl border-2 border-gray-100 shadow-sm">
+                        <div class="flex flex-col sm:flex-row items-center justify-between mb-4">
+                            <h3 class="text-xl font-black text-gray-700">🔍 找到的因數排列：</h3>
+                            <span id="factor-progress" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-bold text-sm mt-2 sm:mt-0">
+                                進度：0 / 0 個因數
+                            </span>
+                        </div>
+                        
+                        <div id="factor-line" class="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
+                            <!-- 圓圈由 JS 動態產生 -->
+                        </div>
+                        <p class="text-center text-gray-400 font-bold mt-4 text-sm">
+                            (小秘密：因數通常是左右一對一對出現的喔！)
+                        </p>
+                    </div>
+
+                    <!-- 已找到的組合對 -->
+                    <div>
+                        <h3 class="text-xl font-black text-gray-700 mb-4 flex justify-between items-end">
+                            <span>🧩 乘法組合進度：</span>
+                            <span id="pairs-progress" class="text-sm text-gray-500">0 / 0 組</span>
+                        </h3>
+                        <div id="pairs-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- 組合方塊由 JS 動態產生 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右側：乘法表區塊 -->
+            <div class="lg:col-span-1">
+                <div class="sticky top-6">
+                    <div class="bg-white p-4 rounded-3xl shadow-lg border-4 border-yellow-300 w-full">
+                        <h3 class="text-xl font-bold text-center text-gray-700 mb-3 flex items-center justify-center gap-2">
+                            <span>🧮</span> 九九乘法表小抄 <span>🧮</span>
+                        </h3>
+                        
+                        <!-- 互動提示區 -->
+                        <div id="table-hint" class="h-12 bg-blue-50 rounded-xl mb-4 flex items-center justify-center border-2 border-blue-200">
+                            <span class="text-gray-500 font-bold">點擊或滑過格子看看答案！</span>
+                        </div>
+
+                        <!-- 表格區由 JS 產生 -->
+                        <div id="multiplication-grid" class="grid grid-cols-10 gap-1 text-center text-sm sm:text-base font-bold">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        // 老師提到的「不容易判別的數字」以及其他適合進階練習的數字
+        const trickyNumbers = [54, 56, 68, 72, 76, 78, 84, 92, 96, 98, 102, 104, 105, 108, 112, 114, 120, 126, 132, 138, 144, 156];
+
+        // 遊戲狀態變數
+        let currentTarget = null;
+        let validPairs = [];     
+        let validFactors = [];   
+        let foundPairs = [];     
+        let foundFactors = [];   
+
+        // 獲取 DOM 元素
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const celebrationScreen = document.getElementById('celebration-screen');
+        const targetDisplay = document.getElementById('target-display');
+        const equationTarget = document.getElementById('equation-target');
+        const celebTarget = document.getElementById('celeb-target');
+        const messageBox = document.getElementById('message-box');
+        const inputA = document.getElementById('input-a');
+        const inputB = document.getElementById('input-b');
+        const factorLine = document.getElementById('factor-line');
+        const factorProgress = document.getElementById('factor-progress');
+        const pairsGrid = document.getElementById('pairs-grid');
+        const pairsProgress = document.getElementById('pairs-progress');
+
+        // 初始化新題目
+        function initGame(num) {
+            currentTarget = num;
+            let pairs = [];
+            let factorsSet = new Set();
+            
+            // 計算所有因數對
+            for (let i = 1; i <= Math.sqrt(num); i++) {
+                if (num % i === 0) {
+                    pairs.push([i, num / i]);
+                    factorsSet.add(i);
+                    factorsSet.add(num / i);
+                }
+            }
+            
+            validPairs = pairs;
+            validFactors = Array.from(factorsSet).sort((a, b) => a - b);
+            foundPairs = [];
+            foundFactors = [];
+            
+            inputA.value = '';
+            inputB.value = '';
+            
+            // 切換畫面
+            welcomeScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            celebrationScreen.classList.add('hidden');
+            celebrationScreen.classList.remove('flex'); // Tailwind flex 覆蓋處理
+            
+            targetDisplay.textContent = num;
+            equationTarget.textContent = num;
+            celebTarget.textContent = num;
+            
+            showMessage(`新題目 ${num} 產生囉！請開始尋找因數！`, 'info');
+            renderGameUI();
+        }
+
+        // 隨機簡單題 (10~50)
+        function handleRandomEasy() {
+            const r = Math.floor(Math.random() * 41) + 10; 
+            initGame(r);
+        }
+
+        // 隨機魔王題
+        function handleRandomHard() {
+            const r = trickyNumbers[Math.floor(Math.random() * trickyNumbers.length)];
+            initGame(r);
+        }
+
+        // 自訂題目
+        function handleSetCustom(e) {
+            e.preventDefault();
+            const inputEl = document.getElementById('custom-input');
+            const val = parseInt(inputEl.value);
+            if (isNaN(val) || val < 1 || val > 999) {
+                showMessage('請輸入 1 到 999 之間的數字喔！', 'error');
+                return;
+            }
+            initGame(val);
+            inputEl.value = '';
+        }
+
+        // 回到歡迎畫面
+        function resetToWelcome() {
+            currentTarget = null;
+            welcomeScreen.classList.remove('hidden');
+            gameScreen.classList.add('hidden');
+        }
+
+        // 檢查玩家輸入
+        function handleCheck(e) {
+            e.preventDefault();
+            if (!currentTarget) return;
+
+            const a = parseInt(inputA.value);
+            const b = parseInt(inputB.value);
+            
+            if (isNaN(a) || isNaN(b)) {
+                showMessage('⚠️ 請在兩個空格都填入數字喔！', 'error');
+                return;
+            }
+
+            if (a * b !== currentTarget) {
+                showMessage(`❌ 哎呀！ ${a} ✖️ ${b} = ${a * b}，不是 ${currentTarget} 喔！再算算看！`, 'error');
+                return;
+            }
+
+            // 確保小數字在前
+            const normA = Math.min(a, b);
+            const normB = Math.max(a, b);
+
+            // 檢查是否已找過
+            const alreadyFound = foundPairs.some(p => p[0] === normA && p[1] === normB);
+            if (alreadyFound) {
+                showMessage(`⚠️ 你已經找過 ${normA} ✖️ ${normB} 囉！試試看其他的組合吧！`, 'info');
+                return;
+            }
+
+            // 答對了！
+            foundPairs.push([normA, normB]);
+            if (!foundFactors.includes(normA)) foundFactors.push(normA);
+            if (!foundFactors.includes(normB)) foundFactors.push(normB);
+            
+            // 排序 foundFactors，雖不影響邏輯但保持整潔
+            foundFactors.sort((x, y) => x - y);
+
+            showMessage(`🎉 答對了！成功找到一組因數： ${normA} 和 ${normB}！`, 'success');
+            inputA.value = '';
+            inputB.value = '';
+            
+            renderGameUI();
+            checkWinCondition();
+        }
+
+        // 提示功能
+        function handleHint() {
+            if (!currentTarget) return;
+            const nextMissing = validPairs.find(vp => !foundPairs.some(p => p[0] === vp[0] && p[1] === vp[1]));
+            if (nextMissing) {
+                showMessage(`💡 提示小幫手：要不要試試看把 ${currentTarget} 除以 ${nextMissing[0]} 看看？`, 'info');
+            }
+        }
+
+        // 顯示訊息
+        function showMessage(text, type) {
+            messageBox.textContent = text;
+            messageBox.className = 'mb-6 p-4 rounded-2xl text-lg font-bold text-center border-2 animate-pop block'; // 重置 classes
+            
+            if (type === 'error') {
+                messageBox.classList.add('bg-red-50', 'border-red-200', 'text-red-600');
+            } else if (type === 'success') {
+                messageBox.classList.add('bg-green-50', 'border-green-200', 'text-green-600');
+            } else {
+                messageBox.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-600');
+            }
+            
+            // 重新觸發動畫
+            messageBox.classList.remove('animate-pop');
+            void messageBox.offsetWidth; // trigger reflow
+            messageBox.classList.add('animate-pop');
+        }
+
+        // 檢查是否完成
+        function checkWinCondition() {
+            if (foundPairs.length === validPairs.length) {
+                celebrationScreen.classList.remove('hidden');
+                celebrationScreen.classList.add('flex', 'animate-pop');
+            }
+        }
+
+        // 渲染遊戲區域 (因數線與組合)
+        function renderGameUI() {
+            // 更新進度文字
+            factorProgress.textContent = `進度：${foundFactors.length} / ${validFactors.length} 個因數`;
+            pairsProgress.textContent = `${foundPairs.length} / ${validPairs.length} 組`;
+
+            // 渲染因數線 (圓圈)
+            let factorLineHTML = '';
+            validFactors.forEach(f => {
+                const isFound = foundFactors.includes(f);
+                if (isFound) {
+                    factorLineHTML += `
+                        <div class="flex items-center">
+                            <div class="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-full text-xl sm:text-2xl font-black transition-all duration-500 bg-blue-500 text-white shadow-lg border-4 border-blue-200 animate-pop scale-110 z-10">
+                                ${f}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    factorLineHTML += `
+                        <div class="flex items-center">
+                            <div class="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-full text-xl sm:text-2xl font-black transition-all duration-500 bg-gray-100 text-gray-300 border-4 border-dashed border-gray-300">
+                                ?
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            factorLine.innerHTML = factorLineHTML;
+
+            // 渲染組合方塊
+            let pairsGridHTML = '';
+            validPairs.forEach(vp => {
+                const isFound = foundPairs.some(p => p[0] === vp[0] && p[1] === vp[1]);
+                if (isFound) {
+                    pairsGridHTML += `
+                        <div class="bg-green-100 border-2 border-green-400 rounded-2xl p-4 flex justify-center items-center text-2xl font-black text-green-800 shadow-sm animate-pop">
+                            ${vp[0]} ✖️ ${vp[1]} 🟰 ${currentTarget}
+                        </div>
+                    `;
+                } else {
+                    pairsGridHTML += `
+                        <div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-4 flex justify-center items-center text-2xl font-black text-gray-300">
+                            ? ✖️ ? 🟰 ${currentTarget}
+                        </div>
+                    `;
+                }
+            });
+            pairsGrid.innerHTML = pairsGridHTML;
+        }
+
+        // 產生九九乘法表
+        function initMultiplicationTable() {
+            const grid = document.getElementById('multiplication-grid');
+            const hint = document.getElementById('table-hint');
+            let html = '';
+
+            // 左上角空白
+            html += `<div class="bg-gray-200 rounded flex items-center justify-center">✖️</div>`;
+            
+            // 頂部列 1-9
+            for(let c=1; c<=9; c++) {
+                html += `<div class="bg-yellow-100 text-yellow-800 rounded flex items-center justify-center py-2">${c}</div>`;
+            }
+
+            // 產生列
+            for(let r=1; r<=9; r++) {
+                // 左側行 1-9
+                html += `<div class="bg-blue-100 text-blue-800 rounded flex items-center justify-center py-2">${r}</div>`;
+                
+                // 乘法格子
+                for(let c=1; c<=9; c++) {
+                    html += `
+                        <div 
+                            onmouseenter="showTableHint(${r}, ${c})"
+                            onmouseleave="hideTableHint()"
+                            onclick="showTableHint(${r}, ${c})"
+                            class="bg-white border-2 border-gray-100 hover:bg-green-200 hover:border-green-400 hover:scale-110 cursor-pointer rounded flex items-center justify-center py-1 sm:py-2 transition-all duration-150 text-gray-700"
+                        >
+                            ${r * c}
+                        </div>
+                    `;
+                }
+            }
+            grid.innerHTML = html;
+        }
+
+        // 九九乘法表提示互動
+        const tableHint = document.getElementById('table-hint');
+        function showTableHint(r, c) {
+            tableHint.innerHTML = `
+                <span class="text-xl font-black text-blue-600 animate-pop">
+                    ${r} ✖️ ${c} 🟰 ${r * c}
+                </span>
+            `;
+        }
+        
+        function hideTableHint() {
+            // 可選：如果想要滑鼠移開就恢復預設文字可以取消註解下面這行
+            // 但保留最後一次滑過的數值對孩子來說體驗可能更好
+            /* tableHint.innerHTML = `<span class="text-gray-500 font-bold">點擊或滑過格子看看答案！</span>`; */
+        }
+
+        // 初始化
+        window.onload = () => {
+            initMultiplicationTable();
+        };
+
+    </script>
+</body>
+</html>
