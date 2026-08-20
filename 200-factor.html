@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>200以內盲點因數與數感互動大冒險</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti for rewards -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 50%, #fef3c7 100%);
+            min-height: 100vh;
+        }
+
+        /* Card Flip Animations */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        /* Custom Bounce & Glow */
+        .glow-effect {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .correct-pulse {
+            animation: pulse-green 0.5s ease-in-out;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); background-color: #dcfce7; }
+            100% { transform: scale(1); }
+        }
+
+        .wrong-shake {
+            animation: shake 0.4s ease-in-out;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col min-h-screen">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-white/90 backdrop-blur-md border-b border-sky-100 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-white text-xl shadow-md">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                        數感大冒險 🌟 <span class="text-amber-500 text-lg md:text-xl font-bold">200以內隱形因數大挑戰</span>
+                    </h1>
+                    <p class="text-xs text-slate-500 font-medium hidden sm:block">熟練乘除互逆 ‧ 告別數學卡關！</p>
+                </div>
+            </div>
+
+            <!-- Score & Stats Bar -->
+            <div class="flex items-center space-x-4 bg-slate-100 px-4 py-1.5 rounded-full border border-slate-200">
+                <div class="flex items-center space-x-1.5 text-amber-500 font-bold" title="金幣得分">
+                    <i class="fa-solid fa-coins text-lg"></i>
+                    <span id="score-display">0</span>
+                </div>
+                <div class="w-px h-4 bg-slate-300"></div>
+                <div class="flex items-center space-x-1.5 text-rose-500 font-bold" title="連續答對">
+                    <i class="fa-solid fa-fire text-lg"></i>
+                    <span id="streak-display">0</span>
+                </div>
+                <div class="w-px h-4 bg-slate-300"></div>
+                <button id="sound-btn" onclick="toggleSound()" class="text-slate-600 hover:text-indigo-600 transition" title="開關音效">
+                    <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+                </button>
+                <button onclick="openModal('cheatsheet-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1 rounded-full font-bold shadow transition flex items-center gap-1">
+                    <i class="fa-solid fa-lightbulb text-amber-300"></i> 因數秘笈
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Navigation Tabs -->
+    <div class="max-w-6xl mx-auto px-4 mt-4 w-full">
+        <nav class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-white/70 p-1.5 rounded-2xl shadow-inner border border-white">
+            <button onclick="switchTab('quiz')" id="tab-quiz" class="tab-btn flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-sm transition-all bg-indigo-600 text-white shadow-md">
+                <i class="fa-solid fa-bullseye"></i> 🎯 拆解大挑戰
+            </button>
+            <button onclick="switchTab('detective')" id="tab-detective" class="tab-btn flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-sm transition-all text-slate-600 hover:bg-white/80">
+                <i class="fa-solid fa-user-secret"></i> 🕵️ 數感大偵探
+            </button>
+            <button onclick="switchTab('match')" id="tab-match" class="tab-btn flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-sm transition-all text-slate-600 hover:bg-white/80">
+                <i class="fa-solid fa-puzzle-piece"></i> 🧩 因子消消樂
+            </button>
+            <button onclick="switchTab('codex')" id="tab-codex" class="tab-btn flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-sm transition-all text-slate-600 hover:bg-white/80">
+                <i class="fa-solid fa-book-open"></i> 🎴 靈魂數字圖鑑
+            </button>
+        </nav>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="max-w-6xl mx-auto px-4 py-6 flex-grow w-full">
+
+        <!-- Mode 1: Factor Quiz Mode (🎯 拆解大挑戰) -->
+        <section id="view-quiz" class="space-y-6">
+            <div class="bg-white rounded-3xl p-6 md:p-8 shadow-xl border border-indigo-50 text-center relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -z-0 opacity-50"></div>
+                
+                <div class="relative z-10 max-w-xl mx-auto">
+                    <span id="quiz-category-tag" class="inline-block px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full mb-3">
+                        7 的隱形倍數
+                    </span>
+
+                    <div class="text-sm font-bold text-slate-400 mb-1">請找出此數字的乘法拆解式：</div>
+                    
+                    <div class="text-5xl md:text-6xl font-black text-indigo-900 tracking-wider mb-6 my-2 py-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner">
+                        <span id="quiz-target-num">119</span>
+                    </div>
+
+                    <div class="text-2xl font-black text-slate-700 mb-8 flex items-center justify-center gap-3 flex-wrap">
+                        <span id="quiz-target-copy" class="text-indigo-600">119</span>
+                        <span>=</span>
+                        <span id="quiz-factor-1" class="px-4 py-2 bg-indigo-50 border-2 border-indigo-200 text-indigo-800 rounded-xl">?</span>
+                        <span>×</span>
+                        <span id="quiz-factor-2" class="px-4 py-2 bg-indigo-50 border-2 border-indigo-200 text-indigo-800 rounded-xl">?</span>
+                    </div>
+
+                    <!-- Multiple Choice Options Grid -->
+                    <div id="quiz-options" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                        <!-- Options injected dynamically -->
+                    </div>
+
+                    <!-- Explanation Hint Box (Hidden by default) -->
+                    <div id="quiz-hint-box" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-200 text-left text-sm text-amber-900 mb-4 animate-fade-in">
+                        <div class="font-bold mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-lightbulb text-amber-500"></i> 解題大解密：
+                        </div>
+                        <div id="quiz-hint-text">119 尾數是 9，但 1+1+9=11 不是 3 的倍數。試著除以 7：119 ÷ 7 = 17！</div>
+                    </div>
+
+                    <!-- Next Question Button -->
+                    <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="hidden w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-lg rounded-2xl shadow-lg transition transform active:scale-95">
+                        下一題 <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mode 2: Detective Mode (🕵️ 數感大偵探) -->
+        <section id="view-detective" class="hidden space-y-6">
+            <div class="bg-white rounded-3xl p-6 md:p-8 shadow-xl border border-sky-50 text-center relative">
+                <div class="max-w-xl mx-auto">
+                    <div class="inline-block px-3 py-1 bg-sky-100 text-sky-800 text-xs font-bold rounded-full mb-3">
+                        🕵️ 質數與隱形合數大偵測
+                    </div>
+                    <h2 class="text-lg font-bold text-slate-600 mb-2">請問這個數字是「質數」還是可以被拆解的「隱形合數」？</h2>
+
+                    <div class="text-6xl font-black text-sky-900 my-6 py-6 bg-gradient-to-br from-sky-50 to-indigo-50 rounded-3xl border border-sky-100 shadow-inner">
+                        <span id="detective-target-num">161</span>
+                    </div>
+
+                    <!-- 2 Main Choice Buttons -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                        <button onclick="checkDetectiveAnswer('prime')" id="detective-btn-prime" class="p-5 rounded-2xl border-2 border-slate-200 hover:border-slate-400 bg-white font-bold text-lg text-slate-700 hover:bg-slate-50 transition shadow-sm flex flex-col items-center gap-1">
+                            <span class="text-2xl">🛡️ 質數</span>
+                            <span class="text-xs text-slate-400 font-normal">只能被 1 和自己整除</span>
+                        </button>
+                        <button onclick="checkDetectiveAnswer('composite')" id="detective-btn-composite" class="p-5 rounded-2xl border-2 border-slate-200 hover:border-amber-400 bg-white font-bold text-lg text-slate-700 hover:bg-amber-50 transition shadow-sm flex flex-col items-center gap-1">
+                            <span class="text-2xl">🔍 隱形合數</span>
+                            <span class="text-xs text-slate-400 font-normal">藏有 7, 11, 13, 17, 19 等因數</span>
+                        </button>
+                    </div>
+
+                    <!-- Explanation Box -->
+                    <div id="detective-result-box" class="hidden p-4 rounded-2xl text-left mb-6 text-sm">
+                        <!-- Result injected by JS -->
+                    </div>
+
+                    <button id="detective-next-btn" onclick="nextDetectiveQuestion()" class="hidden w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg rounded-2xl shadow-lg transition">
+                        繼續挑戰下一數 <i class="fa-solid fa-forward ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mode 3: Memory Match Game (🧩 因子消消樂) -->
+        <section id="view-match" class="hidden space-y-4">
+            <div class="bg-white rounded-3xl p-6 shadow-xl border border-amber-50 text-center">
+                <div class="flex items-center justify-between mb-4 max-w-2xl mx-auto px-2">
+                    <div class="text-left">
+                        <h2 class="text-lg font-black text-amber-900">🧩 因子配對翻牌遊戲</h2>
+                        <p class="text-xs text-slate-500">翻開卡片，找出「數字」與對應的「拆解組合」！</p>
+                    </div>
+                    <button onclick="resetMatchGame()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow transition">
+                        <i class="fa-solid fa-rotate-right mr-1"></i> 重新一局
+                    </button>
+                </div>
+
+                <!-- Cards Grid -->
+                <div id="match-cards-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-3 max-w-2xl mx-auto min-h-[320px]">
+                    <!-- Match Cards generated dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Mode 4: Numbers Codex / Flashcards (🎴 靈魂數字圖鑑) -->
+        <section id="view-codex" class="hidden space-y-6">
+            <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-xl font-black text-slate-800">🎴 200以內盲點數字口袋圖鑑</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">點擊卡片翻面看解答與秘訣！暑假背熟，解題沒煩惱！</p>
+                    </div>
+
+                    <!-- Filter buttons -->
+                    <div class="flex flex-wrap gap-1.5 text-xs font-bold">
+                        <button onclick="filterCodex('all')" class="codex-filter-btn px-3 py-1.5 rounded-lg bg-indigo-600 text-white">全部數字</button>
+                        <button onclick="filterCodex('7')" class="codex-filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">7 的倍數</button>
+                        <button onclick="filterCodex('13')" class="codex-filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">13 的倍數</button>
+                        <button onclick="filterCodex('17')" class="codex-filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">17 的倍數</button>
+                        <button onclick="filterCodex('19')" class="codex-filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">19 的倍數</button>
+                        <button onclick="filterCodex('square')" class="codex-filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">特殊平方數</button>
+                    </div>
+                </div>
+
+                <!-- Cards Grid -->
+                <div id="codex-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Codex flipcards generated dynamically -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal: Math Tricks Cheat Sheet -->
+    <div id="cheatsheet-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 md:p-8 max-h-[90vh] overflow-y-auto shadow-2xl relative border border-white">
+            <button onclick="closeModal('cheatsheet-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl w-8 h-8 rounded-full flex items-center justify-center bg-slate-100">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl font-bold">
+                    💡
+                </div>
+                <div>
+                    <h3 class="text-xl font-black text-slate-800">200以內因數快速辨識秘笈</h3>
+                    <p class="text-xs text-slate-500">學會這幾招，迅速看透隱形因數！</p>
+                </div>
+            </div>
+
+            <div class="space-y-4 text-sm text-slate-700">
+                <div class="p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
+                    <h4 class="font-bold text-indigo-900 mb-1 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center">1</span>
+                        3 的倍數快查法（各位數相加）
+                    </h4>
+                    <p class="text-xs text-indigo-800 leading-relaxed">
+                        把數字的每一位加起來！若總和是 3 的倍數，該數就能被 3 整除。<br>
+                        👉 例子：<b>153</b> ➔ 1+5+3 = 9 （9是3的倍數），所以 153 = 3 × 51 = <b>9 × 17</b>！
+                    </p>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
+                    <h4 class="font-bold text-emerald-900 mb-1 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-emerald-600 text-white text-xs flex items-center justify-center">2</span>
+                        11 的倍數特徵（奇偶位數差）
+                    </h4>
+                    <p class="text-xs text-emerald-800 leading-relaxed">
+                        奇數位加總 與 偶數位的差若為 0 或 11 的倍數，就是 11 的倍數。<br>
+                        👉 例子：<b>143</b> ➔ (1+3) - 4 = 0 ➔ 143 = <b>11 × 13</b><br>
+                        👉 例子：<b>187</b> ➔ (1+7) - 8 = 0 ➔ 187 = <b>11 × 17</b>
+                    </p>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                    <h4 class="font-bold text-amber-900 mb-1 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-amber-600 text-white text-xs flex items-center justify-center">3</span>
+                        必定要背熟的「常用平方數表 (11×11 ~ 25×25)」
+                    </h4>
+                    <ul class="text-xs text-amber-900 grid grid-cols-3 sm:grid-cols-5 gap-1.5 mt-2 font-mono text-center">
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">121 = 11²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">144 = 12²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">169 = 13²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">196 = 14²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">225 = 15²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">256 = 16²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">289 = 17²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">324 = 18²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">361 = 19²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">400 = 20²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">441 = 21²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">484 = 22²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">529 = 23²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">576 = 24²</li>
+                        <li class="p-1.5 bg-white rounded-xl border border-amber-200">625 = 25²</li>
+                    </ul>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-rose-50 border border-rose-100">
+                    <h4 class="font-bold text-rose-900 mb-1 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-rose-600 text-white text-xs flex items-center justify-center">4</span>
+                        7、13、17、19 的熱門怪咖對比表
+                    </h4>
+                    <div class="text-xs text-rose-800 space-y-1 mt-1 font-mono">
+                        <p>• <b>119</b> = 7 × 17 （最常被誤認為質數！）</p>
+                        <p>• <b>133</b> = 7 × 19</p>
+                        <p>• <b>161</b> = 7 × 23</p>
+                        <p>• <b>209</b> = 11 × 19</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 text-center">
+                <button onclick="closeModal('cheatsheet-modal')" class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-2xl shadow">
+                    我記住了！開始練習 <i class="fa-solid fa-check ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Comprehensive Dataset of Tricky & Invisible Factor Numbers (<200)
+        const TRICKY_NUMBERS = [
+            // 7 Series
+            { num: 91, f1: 7, f2: 13, tag: "7 的倍數", isPrime: false, hint: "91 非常像質數！試著除以 7：91 ÷ 7 = 13。" },
+            { num: 98, f1: 7, f2: 14, tag: "7 的倍數", isPrime: false, hint: "98 = 2 × 49 = 7 × 14。" },
+            { num: 105, f1: 7, f2: 15, tag: "7 的倍數", isPrime: false, hint: "105 尾數是 5，除了 5 之外，105 = 7 × 15 = 3 × 35。" },
+            { num: 119, f1: 7, f2: 17, tag: "7 的倍數", isPrime: false, hint: "119 是考題超級魔王！119 = 7 × 17。" },
+            { num: 133, f1: 7, f2: 19, tag: "7 的倍數", isPrime: false, hint: "133 尾數 3 讓人誤以為質數，但 133 = 7 × 19。" },
+            { num: 147, f1: 7, f2: 21, tag: "7 的倍數", isPrime: false, hint: "147 數字和 1+4+7=12 (可被3整除)，147 = 3 × 49 = 7 × 21。" },
+            { num: 161, f1: 7, f2: 23, tag: "7 的倍數", isPrime: false, hint: "161 是隱形合數！161 = 7 × 23。" },
+
+            // 13 Series
+            { num: 65, f1: 5, f2: 13, tag: "13 的倍數", isPrime: false, hint: "65 尾數是 5，65 = 5 × 13。" },
+            { num: 78, f1: 6, f2: 13, tag: "13 的倍數", isPrime: false, hint: "78 = 6 × 13 (也是 3 × 26)。" },
+            { num: 104, f1: 8, f2: 13, tag: "13 的倍數", isPrime: false, hint: "104 = 8 × 13 (也是 4 × 26)。" },
+            { num: 117, f1: 9, f2: 13, tag: "13 的倍數", isPrime: false, hint: "1+1+7=9，所以能被 9 整除！117 = 9 × 13 (3 × 39)。" },
+            { num: 143, f1: 11, f2: 13, tag: "13 的倍數", isPrime: false, hint: "143 奇偶位數差 (1+3)-4=0！143 = 11 × 13。" },
+            { num: 156, f1: 12, f2: 13, tag: "13 的倍數", isPrime: false, hint: "156 = 12 × 13 (4 × 39)。" },
+            { num: 169, f1: 13, f2: 13, tag: "特殊平方數", isPrime: false, hint: "169 是 13 的平方！(13 × 13)" },
+            { num: 182, f1: 14, f2: 13, tag: "13 的倍數", isPrime: false, hint: "182 = 14 × 13 (2 × 91)。" },
+            { num: 195, f1: 15, f2: 13, tag: "13 的倍數", isPrime: false, hint: "195 = 15 × 13 (5 × 39)。" },
+
+            // 17 Series
+            { num: 51, f1: 3, f2: 17, tag: "17 的倍數", isPrime: false, hint: "51 各位數和 5+1=6，所以 51 = 3 × 17！" },
+            { num: 85, f1: 5, f2: 17, tag: "17 的倍數", isPrime: false, hint: "85 = 5 × 17。" },
+            { num: 102, f1: 6, f2: 17, tag: "17 的倍數", isPrime: false, hint: "102 = 6 × 17 (3 × 34)。" },
+            { num: 136, f1: 8, f2: 17, tag: "17 的倍數", isPrime: false, hint: "136 = 8 × 17。" },
+            { num: 153, f1: 9, f2: 17, tag: "17 的倍數", isPrime: false, hint: "1+5+3=9，所以 153 = 9 × 17 (3 × 51)。" },
+            { num: 187, f1: 11, f2: 17, tag: "17 的倍數", isPrime: false, hint: "187 奇偶差 (1+7)-8=0！187 = 11 × 17。" },
+
+            // 19 Series
+            { num: 57, f1: 3, f2: 19, tag: "19 的倍數", isPrime: false, hint: "5+7=12，所以 57 = 3 × 19！" },
+            { num: 76, f1: 4, f2: 19, tag: "19 的倍數", isPrime: false, hint: "76 = 4 × 19。" },
+            { num: 95, f1: 5, f2: 19, tag: "19 的倍數", isPrime: false, hint: "95 = 5 × 19。" },
+            { num: 114, f1: 6, f2: 19, tag: "19 的倍數", isPrime: false, hint: "114 = 6 × 19。" },
+            { num: 152, f1: 8, f2: 19, tag: "19 的倍數", isPrime: false, hint: "152 = 8 × 19。" },
+            { num: 171, f1: 9, f2: 19, tag: "19 的倍數", isPrime: false, hint: "1+7+1=9，171 = 9 × 19。" },
+            { num: 209, f1: 11, f2: 19, tag: "19 的倍數", isPrime: false, hint: "209 = 11 × 19，頂級高難度數字！" },
+
+            // Sneaky 3/11 & Squares
+            { num: 87, f1: 3, f2: 29, tag: "3 的倍數", isPrime: false, hint: "8+7=15，87 = 3 × 29。" },
+            { num: 111, f1: 3, f2: 37, tag: "3 的倍數", isPrime: false, hint: "1+1+1=3！111 = 3 × 37。" },
+            { num: 123, f1: 3, f2: 41, tag: "3 的倍數", isPrime: false, hint: "1+2+3=6！123 = 3 × 41。" },
+            { num: 129, f1: 3, f2: 43, tag: "3 的倍數", isPrime: false, hint: "1+2+9=12！129 = 3 × 43。" },
+            { num: 141, f1: 3, f2: 47, tag: "3 的倍數", isPrime: false, hint: "1+4+1=6！141 = 3 × 47。" },
+            { num: 177, f1: 3, f2: 59, tag: "3 的倍數", isPrime: false, hint: "1+7+7=15！177 = 3 × 59。" },
+
+            // Complete Special Square Numbers Series (11x11 ~ 25x25)
+            { num: 121, f1: 11, f2: 11, tag: "特殊平方數", isPrime: false, hint: "121 是 11 的平方！(11 × 11)" },
+            { num: 144, f1: 12, f2: 12, tag: "特殊平方數", isPrime: false, hint: "144 是 12 的平方！(12 × 12)" },
+            { num: 169, f1: 13, f2: 13, tag: "特殊平方數", isPrime: false, hint: "169 是 13 的平方！(13 × 13)" },
+            { num: 196, f1: 14, f2: 14, tag: "特殊平方數", isPrime: false, hint: "196 是 14 的平方！(14 × 14)" },
+            { num: 225, f1: 15, f2: 15, tag: "特殊平方數", isPrime: false, hint: "225 是 15 的平方！(15 × 15)" },
+            { num: 256, f1: 16, f2: 16, tag: "特殊平方數", isPrime: false, hint: "256 是 16 的平方！(16 × 16)" },
+            { num: 289, f1: 17, f2: 17, tag: "特殊平方數", isPrime: false, hint: "289 是 17 的平方！(17 × 17)" },
+            { num: 324, f1: 18, f2: 18, tag: "特殊平方數", isPrime: false, hint: "324 是 18 的平方！(18 × 18)" },
+            { num: 361, f1: 19, f2: 19, tag: "特殊平方數", isPrime: false, hint: "361 是 19 的平方！(19 × 19)" },
+            { num: 400, f1: 20, f2: 20, tag: "特殊平方數", isPrime: false, hint: "400 是 20 的平方！(20 × 20)" },
+            { num: 441, f1: 21, f2: 21, tag: "特殊平方數", isPrime: false, hint: "441 是 21 的平方！(21 × 21)" },
+            { num: 484, f1: 22, f2: 22, tag: "特殊平方數", isPrime: false, hint: "484 是 22 的平方！(22 × 22)" },
+            { num: 529, f1: 23, f2: 23, tag: "特殊平方數", isPrime: false, hint: "529 是 23 的平方！(23 × 23)" },
+            { num: 576, f1: 24, f2: 24, tag: "特殊平方數", isPrime: false, hint: "576 是 24 的平方！(24 × 24)" },
+            { num: 625, f1: 25, f2: 25, tag: "特殊平方數", isPrime: false, hint: "625 是 25 的平方！(25 × 25)" },
+
+            // Real Primes for Detective mode contrast
+            { num: 101, f1: 1, f2: 101, tag: "真正的質數", isPrime: true, hint: "101 是真正的質數，無法被 2~10 等小數整除！" },
+            { num: 103, f1: 1, f2: 103, tag: "真正的質數", isPrime: true, hint: "103 是質數！" },
+            { num: 107, f1: 1, f2: 107, tag: "真正的質數", isPrime: true, hint: "107 是質數！" },
+            { num: 109, f1: 1, f2: 109, tag: "真正的質數", isPrime: true, hint: "109 是質數！" },
+            { num: 127, f1: 1, f2: 127, tag: "真正的質數", isPrime: true, hint: "127 是質數！" },
+            { num: 137, f1: 1, f2: 137, tag: "真正的質數", isPrime: true, hint: "137 是質數！" },
+            { num: 139, f1: 1, f2: 139, tag: "真正的質數", isPrime: true, hint: "139 是質數！" },
+            { num: 149, f1: 1, f2: 149, tag: "真正的質數", isPrime: true, hint: "149 是質數！" },
+            { num: 163, f1: 1, f2: 163, tag: "真正的質數", isPrime: true, hint: "163 是質數！" },
+            { num: 173, f1: 1, f2: 173, tag: "真正的質數", isPrime: true, hint: "173 是質數！" },
+            { num: 197, f1: 1, f2: 197, tag: "真正的質數", isPrime: true, hint: "197 是質數！" }
+        ];
+
+        // Web Audio API Synthesizer (No external MP3s needed)
+        let soundEnabled = true;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'correct') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.1); // E5
+                    osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.2); // G5
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now); // A3
+                    osc.frequency.setValueAtTime(180, now + 0.15); // Low buzz
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'flip') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'win') {
+                    // Confetti Fanfare sound
+                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.frequency.setValueAtTime(freq, now + idx * 0.08);
+                        g.gain.setValueAtTime(0.2, now + idx * 0.08);
+                        g.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.3);
+                        o.start(now + idx * 0.08);
+                        o.stop(now + idx * 0.08 + 0.3);
+                    });
+                }
+            } catch (e) {
+                console.log("Audio play error", e);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('sound-icon');
+            if (soundEnabled) {
+                icon.className = 'fa-solid fa-volume-high';
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark text-slate-400';
+            }
+        }
+
+        // Global Game State
+        let score = 0;
+        let streak = 0;
+        let currentQuizItem = null;
+        let currentDetectiveItem = null;
+
+        // Helper function alias for match game initialization
+        function initMatchGame() {
+            resetMatchGame();
+        }
+
+        // Initialize App on load
+        window.onload = function() {
+            initQuizMode();
+            initDetectiveMode();
+            initMatchGame();
+            renderCodex('all');
+        };
+
+        // Navigation Tab Switcher
+        function switchTab(tab) {
+            playSound('flip');
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('bg-indigo-600', 'text-white', 'shadow-md');
+                b.classList.add('text-slate-600', 'hover:bg-white/80');
+            });
+
+            document.getElementById(`tab-${tab}`).classList.add('bg-indigo-600', 'text-white', 'shadow-md');
+            document.getElementById(`tab-${tab}`).classList.remove('text-slate-600', 'hover:bg-white/80');
+
+            ['quiz', 'detective', 'match', 'codex'].forEach(view => {
+                document.getElementById(`view-${view}`).classList.add('hidden');
+            });
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+
+            if(tab === 'match') {
+                resetMatchGame();
+            }
+        }
+
+        // Mode 1: Factor Quiz Logic
+        function initQuizMode() {
+            const composites = TRICKY_NUMBERS.filter(x => !x.isPrime);
+            currentQuizItem = composites[Math.floor(Math.random() * composites.length)];
+
+            document.getElementById('quiz-category-tag').innerText = currentQuizItem.tag;
+            document.getElementById('quiz-target-num').innerText = currentQuizItem.num;
+            document.getElementById('quiz-target-copy').innerText = currentQuizItem.num;
+
+            document.getElementById('quiz-factor-1').innerText = '?';
+            document.getElementById('quiz-factor-2').innerText = '?';
+
+            document.getElementById('quiz-hint-box').classList.add('hidden');
+            document.getElementById('quiz-next-btn').classList.add('hidden');
+
+            // Generate choices (1 correct pair + 3 distractors)
+            const correctOption = `${currentQuizItem.f1} × ${currentQuizItem.f2}`;
+            const options = [correctOption];
+
+            while (options.length < 4) {
+                const randomF1 = [3, 5, 7, 9, 11, 13, 17, 19][Math.floor(Math.random() * 8)];
+                const randomF2 = Math.floor(Math.random() * 20) + 11;
+                const distractor = `${randomF1} × ${randomF2}`;
+                if (!options.includes(distractor) && (randomF1 * randomF2 !== currentQuizItem.num)) {
+                    options.push(distractor);
+                }
+            }
+
+            // Shuffle choices
+            options.sort(() => Math.random() - 0.5);
+
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "quiz-opt-btn p-4 rounded-2xl border-2 border-indigo-100 hover:border-indigo-400 bg-white font-bold text-indigo-950 text-xl shadow-sm hover:shadow-md transition active:scale-98 flex items-center justify-center";
+                btn.innerText = opt;
+                btn.onclick = () => checkQuizAnswer(opt, correctOption, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkQuizAnswer(selectedOpt, correctOpt, btn) {
+            const allBtns = document.querySelectorAll('.quiz-opt-btn');
+            allBtns.forEach(b => b.disabled = true);
+
+            if (selectedOpt === correctOpt) {
+                playSound('correct');
+                btn.classList.remove('border-indigo-100', 'bg-white');
+                btn.classList.add('bg-emerald-500', 'text-white', 'border-emerald-600', 'correct-pulse');
+
+                const parts = correctOpt.split(' × ');
+                document.getElementById('quiz-factor-1').innerText = parts[0];
+                document.getElementById('quiz-factor-2').innerText = parts[1];
+
+                addScore(15);
+                addStreak();
+            } else {
+                playSound('wrong');
+                btn.classList.remove('border-indigo-100', 'bg-white');
+                btn.classList.add('bg-rose-500', 'text-white', 'border-rose-600', 'wrong-shake');
+
+                // Highlight correct one
+                allBtns.forEach(b => {
+                    if (b.innerText === correctOpt) {
+                        b.classList.add('bg-emerald-100', 'border-emerald-400', 'text-emerald-900');
+                    }
+                });
+
+                resetStreak();
+            }
+
+            // Show explanation
+            document.getElementById('quiz-hint-text').innerText = currentQuizItem.hint;
+            document.getElementById('quiz-hint-box').classList.remove('hidden');
+            document.getElementById('quiz-next-btn').classList.remove('hidden');
+        }
+
+        function nextQuizQuestion() {
+            playSound('flip');
+            initQuizMode();
+        }
+
+        // Mode 2: Detective Mode Logic
+        function initDetectiveMode() {
+            currentDetectiveItem = TRICKY_NUMBERS[Math.floor(Math.random() * TRICKY_NUMBERS.length)];
+
+            document.getElementById('detective-target-num').innerText = currentDetectiveItem.num;
+            document.getElementById('detective-result-box').classList.add('hidden');
+            document.getElementById('detective-next-btn').classList.add('hidden');
+
+            const btnPrime = document.getElementById('detective-btn-prime');
+            const btnComp = document.getElementById('detective-btn-composite');
+
+            btnPrime.disabled = false;
+            btnComp.disabled = false;
+            btnPrime.className = "p-5 rounded-2xl border-2 border-slate-200 hover:border-indigo-400 bg-white font-bold text-lg text-slate-700 hover:bg-slate-50 transition shadow-sm flex flex-col items-center gap-1";
+            btnComp.className = "p-5 rounded-2xl border-2 border-slate-200 hover:border-amber-400 bg-white font-bold text-lg text-slate-700 hover:bg-amber-50 transition shadow-sm flex flex-col items-center gap-1";
+        }
+
+        function checkDetectiveAnswer(userChoice) {
+            const isPrime = currentDetectiveItem.isPrime;
+            const correctChoice = isPrime ? 'prime' : 'composite';
+
+            document.getElementById('detective-btn-prime').disabled = true;
+            document.getElementById('detective-btn-composite').disabled = true;
+
+            const resultBox = document.getElementById('detective-result-box');
+            resultBox.classList.remove('hidden');
+
+            if (userChoice === correctChoice) {
+                playSound('correct');
+                addScore(20);
+                addStreak();
+                resultBox.className = "p-4 rounded-2xl text-left mb-6 text-sm bg-emerald-50 border border-emerald-200 text-emerald-900";
+                resultBox.innerHTML = `
+                    <div class="font-bold text-base mb-1">🎉 太棒了！答對了！</div>
+                    <div><b>${currentDetectiveItem.num}</b> 確實是【${isPrime ? '質數' : '隱形合數'}】！</div>
+                    <div class="mt-1 text-xs opacity-90">${currentDetectiveItem.hint}</div>
+                `;
+            } else {
+                playSound('wrong');
+                resetStreak();
+                resultBox.className = "p-4 rounded-2xl text-left mb-6 text-sm bg-rose-50 border border-rose-200 text-rose-900";
+                resultBox.innerHTML = `
+                    <div class="font-bold text-base mb-1">❌ 哎呀看走眼了！</div>
+                    <div><b>${currentDetectiveItem.num}</b> 其實是【${isPrime ? '質數' : '隱形合數'}】！</div>
+                    <div class="mt-1 text-xs opacity-90">${currentDetectiveItem.hint}</div>
+                `;
+            }
+
+            document.getElementById('detective-next-btn').classList.remove('hidden');
+        }
+
+        function nextDetectiveQuestion() {
+            playSound('flip');
+            initDetectiveMode();
+        }
+
+        // Mode 3: Memory Match Game Logic
+        let matchCards = [];
+        let flippedCards = [];
+        let matchedPairsCount = 0;
+
+        function resetMatchGame() {
+            matchedPairsCount = 0;
+            flippedCards = [];
+            const grid = document.getElementById('match-cards-grid');
+            grid.innerHTML = '';
+
+            // Pick 6 random tricky composite numbers
+            const candidates = TRICKY_NUMBERS.filter(x => !x.isPrime);
+            const selected = [];
+            while (selected.length < 6) {
+                const item = candidates[Math.floor(Math.random() * candidates.length)];
+                if (!selected.includes(item)) selected.push(item);
+            }
+
+            // Create 12 cards (6 targets + 6 factor pairs)
+            matchCards = [];
+            selected.forEach((item, idx) => {
+                matchCards.push({ id: idx, pairId: idx, type: 'num', text: `${item.num}` });
+                matchCards.push({ id: idx + 100, pairId: idx, type: 'factor', text: `${item.f1} × ${item.f2}` });
+            });
+
+            // Shuffle cards
+            matchCards.sort(() => Math.random() - 0.5);
+
+            matchCards.forEach((card, i) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = "perspective-1000 h-24 cursor-pointer";
+                cardEl.innerHTML = `
+                    <div id="m-card-${i}" class="transform-style-3d transition-transform duration-500 w-full h-full relative rounded-2xl shadow-sm border border-slate-200 bg-white flex items-center justify-center">
+                        <div class="absolute inset-0 backface-hidden rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center font-black text-2xl shadow-inner">
+                            <i class="fa-solid fa-star opacity-40 text-xl"></i>
+                        </div>
+                        <div class="absolute inset-0 backface-hidden rotate-y-180 rounded-2xl bg-white text-indigo-900 border-2 border-indigo-400 flex items-center justify-center font-black text-xl md:text-2xl shadow-md">
+                            ${card.text}
+                        </div>
+                    </div>
+                `;
+                cardEl.onclick = () => flipMatchCard(i, card.pairId);
+                grid.appendChild(cardEl);
+            });
+        }
+
+        function flipMatchCard(index, pairId) {
+            if (flippedCards.length >= 2) return;
+            const cardInner = document.getElementById(`m-card-${index}`);
+            if (cardInner.classList.contains('rotate-y-180') || cardInner.dataset.matched === 'true') return;
+
+            playSound('flip');
+            cardInner.classList.add('rotate-y-180');
+            flippedCards.push({ index, pairId, el: cardInner });
+
+            if (flippedCards.length === 2) {
+                if (flippedCards[0].pairId === flippedCards[1].pairId) {
+                    // Match found!
+                    playSound('correct');
+                    matchedPairsCount++;
+                    flippedCards[0].el.dataset.matched = 'true';
+                    flippedCards[1].el.dataset.matched = 'true';
+                    flippedCards[0].el.children[1].classList.add('bg-emerald-100', 'border-emerald-500', 'text-emerald-900');
+                    flippedCards[1].el.children[1].classList.add('bg-emerald-100', 'border-emerald-500', 'text-emerald-900');
+
+                    flippedCards = [];
+                    addScore(25);
+
+                    if (matchedPairsCount === 6) {
+                        playSound('win');
+                        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                    }
+                } else {
+                    // Not match
+                    playSound('wrong');
+                    setTimeout(() => {
+                        flippedCards[0].el.classList.remove('rotate-y-180');
+                        flippedCards[1].el.classList.remove('rotate-y-180');
+                        flippedCards = [];
+                    }, 900);
+                }
+            }
+        }
+
+        // Mode 4: Codex / Flashcard Filter & Rendering
+        function filterCodex(category) {
+            playSound('flip');
+            const evt = window.event;
+            document.querySelectorAll('.codex-filter-btn').forEach(b => {
+                b.className = "codex-filter-btn px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold";
+            });
+            if (evt && evt.target) {
+                evt.target.className = "codex-filter-btn px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold shadow-sm";
+            }
+
+            renderCodex(category);
+        }
+
+        function renderCodex(category) {
+            const grid = document.getElementById('codex-grid');
+            grid.innerHTML = '';
+
+            const list = TRICKY_NUMBERS.filter(item => {
+                if (category === 'all') return !item.isPrime;
+                if (category === '7') return item.tag === '7 的倍數';
+                if (category === '13') return item.tag === '13 的倍數';
+                if (category === '17') return item.tag === '17 的倍數';
+                if (category === '19') return item.tag === '19 的倍數';
+                if (category === 'square') return item.tag === '特殊平方數';
+                return true;
+            });
+
+            list.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "perspective-1000 h-44 cursor-pointer";
+                card.onclick = function() {
+                    playSound('flip');
+                    const inner = this.querySelector('.codex-card-inner');
+                    inner.classList.toggle('rotate-y-180');
+                };
+
+                card.innerHTML = `
+                    <div class="codex-card-inner transform-style-3d transition-transform duration-500 w-full h-full relative rounded-2xl shadow-sm border border-slate-200 bg-white">
+                        <!-- Front Face -->
+                        <div class="absolute inset-0 backface-hidden p-5 rounded-2xl bg-white flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
+                                    ${item.tag}
+                                </span>
+                                <span class="text-xs text-slate-400 font-medium"><i class="fa-solid fa-hand-pointer text-indigo-400"></i> 點擊翻看拆解</span>
+                            </div>
+                            <div class="text-center my-auto">
+                                <div class="text-4xl font-black text-slate-800 tracking-wider">${item.num}</div>
+                            </div>
+                            <div class="text-xs text-slate-400 text-center font-bold">隱形因數藏在背後 ➔</div>
+                        </div>
+
+                        <!-- Back Face -->
+                        <div class="absolute inset-0 backface-hidden rotate-y-180 p-5 rounded-2xl bg-gradient-to-br from-indigo-900 to-slate-900 text-white flex flex-col justify-between">
+                            <div class="flex items-center justify-between border-b border-indigo-800/80 pb-2">
+                                <span class="text-amber-400 font-bold text-xs">${item.num} 拆解式</span>
+                                <span class="text-indigo-300 text-xs font-bold">乘除互逆</span>
+                            </div>
+                            <div class="text-center py-1">
+                                <div class="text-2xl font-black text-amber-300">${item.num} = ${item.f1} × ${item.f2}</div>
+                            </div>
+                            <p class="text-[11px] text-indigo-200 leading-tight opacity-90">
+                                💡 ${item.hint}
+                            </p>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Utility Functions
+        function addScore(pts) {
+            score += pts;
+            document.getElementById('score-display').innerText = score;
+        }
+
+        function addStreak() {
+            streak++;
+            document.getElementById('streak-display').innerText = streak;
+            if (streak > 0 && streak % 5 === 0) {
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+            }
+        }
+
+        function resetStreak() {
+            streak = 0;
+            document.getElementById('streak-display').innerText = streak;
+        }
+
+        function openModal(id) {
+            playSound('flip');
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            playSound('flip');
+            document.getElementById(id).classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
